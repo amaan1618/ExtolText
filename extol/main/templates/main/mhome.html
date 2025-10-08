@@ -25,22 +25,12 @@ body, html { height: 100%; background: #f5f5f7; }
     position: fixed;
     height: 100%;
 }
-
-.sidebar-top { display: flex; justify-content: center; margin-bottom: 40px; }
+.sidebar-top { display: flex; justify-content: center; align-items: center; height: 80px; margin-bottom: 40px; }
 .add-note-btn {
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    border: none;
-    background: #4CAF50;
-    color: #fff;
-    font-size: 45px;
-    cursor: pointer;
-    display: flex;
-    align-items: flex-end;
-    flex-wrap: wrap;
-    justify-content: space-around;
-    align-content: flex-end;
+    width: 50px; height: 50px; border-radius: 50%; border: none;
+    background: #4CAF50; color: #fff; font-size: 40px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.3s;
 }
 .add-note-btn:hover { background: #45a049; }
 
@@ -52,7 +42,10 @@ body, html { height: 100%; background: #f5f5f7; }
 
 .sidebar-bottom { padding: 20px; border-top: 1px solid #333; text-align: center; }
 .sidebar-bottom form, .sidebar-bottom a { margin-top: 10px; display: block; color: #fff; text-decoration: none; }
-.sidebar-bottom button { padding: 8px 12px; border: none; background: #e84118; color: #fff; border-radius: 4px; cursor: pointer; }
+.sidebar-bottom button {
+    padding: 8px 12px; border: none; background: #e84118; color: #fff;
+    border-radius: 4px; cursor: pointer;
+}
 .sidebar-bottom button:hover { background: #c23616; }
 
 /* ---- Main content ---- */
@@ -62,21 +55,39 @@ body, html { height: 100%; background: #f5f5f7; }
     padding: 30px;
     overflow-y: auto;
 }
-
 h1 { margin-bottom: 20px; color: #1f1f2e; }
 
-.note-card {
-    background: #fff;
-    padding: 20px;
-    border-radius: 10px;
-    margin-bottom: 20px;
+.group-card {
+    background: #fff; padding: 20px; border-radius: 10px; margin-bottom: 20px;
     box-shadow: 0 2px 10px rgba(0,0,0,0.08);
     transition: transform 0.2s, box-shadow 0.2s;
 }
-.note-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+.group-card:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0,0,0,0.12); }
+
+/* ---- Popup ---- */
+.modal {
+    display: none; position: fixed; z-index: 10; left: 0; top: 0;
+    width: 100%; height: 100%; background: rgba(0,0,0,0.5);
+    justify-content: center; align-items: center;
 }
+.modal-content {
+    background: #fff; padding: 25px; border-radius: 10px; width: 350px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    animation: fadeIn 0.2s ease;
+}
+@keyframes fadeIn { from {opacity: 0; transform: scale(0.9);} to {opacity: 1; transform: scale(1);} }
+.modal-content h2 { margin-bottom: 15px; color: #333; }
+.modal-content input {
+    width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px;
+    margin-bottom: 15px; font-size: 16px;
+}
+.modal-content button {
+    padding: 10px 15px; border: none; border-radius: 5px; cursor: pointer;
+}
+.modal-content .submit-btn { background: #4CAF50; color: #fff; }
+.modal-content .cancel-btn { background: #ccc; margin-left: 10px; }
+.modal-content .submit-btn:hover { background: #45a049; }
+.modal-content .cancel-btn:hover { background: #bbb; }
 </style>
 </head>
 <body>
@@ -85,7 +96,7 @@ h1 { margin-bottom: 20px; color: #1f1f2e; }
     <!-- Sidebar -->
     <div class="sidebar">
         <div class="sidebar-top">
-            <button class="add-note-btn" title="Add New Note">+</button>
+            <button class="add-note-btn" id="addGroupBtn" title="Add New Group">+</button>
         </div>
 
         <div class="sidebar-menu">
@@ -109,21 +120,47 @@ h1 { margin-bottom: 20px; color: #1f1f2e; }
     </div>
 
     <!-- Main Content -->
-    <div class="main-content">
-        <h1>Your Notes</h1>
+<div class="main-content">
+    <h1>Your Groups</h1>
 
-        <!-- Example notes -->
-        <div class="note-card">
-            <h3>Note Title 1</h3>
-            <p>Some content for the note...</p>
+    {% for group in groups %}
+    <a href="{% url 'group_detail' group.id %}" style="text-decoration: none; color: inherit;">
+        <div class="group-card">
+            <h3>{{ group.name }}</h3>
+            <p>Created on {{ group.created|date:"M d, Y" }}</p>
         </div>
+    </a>
+    {% empty %}
+    <p>No groups yet. Click the + button to create one!</p>
+    {% endfor %}
+</div>
 
-        <div class="note-card">
-            <h3>Note Title 2</h3>
-            <p>Some content for another note...</p>
-        </div>
-    </div>
 
 </div>
+
+<!-- Group Creation Modal -->
+<div class="modal" id="groupModal">
+    <div class="modal-content">
+        <h2>Create New Group</h2>
+        <form id="groupForm" method="post" action="{% url 'create_group' %}">
+            {% csrf_token %}
+            <input type="text" name="name" id="groupName" placeholder="Group Name" required>
+            <div style="text-align: right;">
+                <button type="button" class="cancel-btn" id="cancelBtn">Cancel</button>
+                <button type="submit" class="submit-btn">Create</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+const modal = document.getElementById('groupModal');
+const addBtn = document.getElementById('addGroupBtn');
+const cancelBtn = document.getElementById('cancelBtn');
+
+addBtn.onclick = () => modal.style.display = 'flex';
+cancelBtn.onclick = () => modal.style.display = 'none';
+window.onclick = (e) => { if (e.target === modal) modal.style.display = 'none'; };
+</script>
 </body>
 </html>
