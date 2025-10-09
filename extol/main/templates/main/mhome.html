@@ -131,6 +131,18 @@ h1 { margin-bottom: 20px; color: #1f1f2e; }
     <!-- Main Content -->
 <div class="main-content">
     <h1>Your Groups</h1>
+    <body>
+  <div class="container">
+    <h2>Upload Handwritten Note</h2>
+    <form method="POST" action="/ocr" enctype="multipart/form-data">
+      <div class="form-group">
+        <label for="image">Choose an image:</label>
+        <input type="file" name="image" accept="image/*" class="form-control" required>
+      </div>
+      <button type="submit" class="btn btn-primary mt-2">Run OCR</button>
+    </form>
+  </div>
+</body>
 
     {% for group in groups %}
     <a href="{% url 'group_detail' group.id %}" style="text-decoration: none; color: inherit;">
