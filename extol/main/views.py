@@ -1,33 +1,38 @@
+import sys
+import os
+from io import BytesIO
+from PIL import Image
+import tempfile
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
+from django.contrib import messages
 from django.views.generic import CreateView
 from django.contrib.auth.forms import UserCreationForm
 from django.urls import reverse_lazy
+from django.http import HttpResponseForbidden
 from .models import Group, Note
 
-# Home page (after login)
-@login_required
-def home(request):
-    return render(request, "main/mhome.html")  # your HTML file
+# Add ocrproject folder to Python path
+OCR_PATH = os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(__file__)), "..", "ocrproject"))
+if OCR_PATH not in sys.path:
+    sys.path.insert(0, OCR_PATH)
 
-# Signup view
+from ocr_utils import run_full_ocr
+
+# ================== Signup view ==================
 class SignUpView(CreateView):
     form_class = UserCreationForm
     success_url = reverse_lazy("login")
     template_name = "registration/signup.html"
 
-def create_group(request):
-    if request.method == "POST":
-        title = request.POST.get("title")
-        Group.objects.create(title=title)
-        return redirect("task_list")  # change to wherever you want to go
-    return render(request, "main/mhome.html")
-
+# ================== Home view ==================
 @login_required
 def home(request):
     groups = Group.objects.filter(user=request.user)
     return render(request, "main/mhome.html", {"groups": groups})
 
+# ================== Create group ==================
 @login_required
 def create_group(request):
     if request.method == "POST":
@@ -36,7 +41,99 @@ def create_group(request):
             Group.objects.create(user=request.user, name=name)
         return redirect("home")
 
+# ================== Group detail ==================
+@login_required
 def group_detail(request, group_id):
     group = get_object_or_404(Group, id=group_id, user=request.user)
     notes = Note.objects.filter(group=group)
     return render(request, "main/group_detail.html", {"group": group, "notes": notes})
+
+# ================== Delete note ==================
+@login_required
+def delete_note(request, note_id):
+    note = get_object_or_404(Note, id=note_id)
+    if note.group.user != request.user:
+        return HttpResponseForbidden("You don't have permission to delete this note.")
+    group_id = note.group.id
+    note.delete()
+    return redirect("group_detail", group_id=group_id)
+
+# ================== OCR view ==================
+@login_required
+def group_ocr(request, group_id):
+    group = get_object_or_404(Group, id=group_id, user=request.user)
+
+    if request.method == "POST":
+        image_file = request.FILES.get("image")
+        if not image_file:
+            messages.error(request, "Please upload a file.")
+            return redirect("group_detail", group_id=group.id)
+
+        try:
+            ext = image_file.name.lower().split('.')[-1]
+
+            # Handle PDF
+            if ext == "pdf":
+                from pdf2image import convert_from_bytes
+                images = convert_from_bytes(image_file.read())
+                if not images:
+                    raise ValueError("No pages found in PDF.")
+                pil_image = images[0]  # Only process first page for now
+            else:
+                pil_image = Image.open(image_file)
+
+            pil_image = pil_image.convert("RGB")
+
+            # Save to temp file (delete=False to avoid Windows PermissionError)
+            import tempfile
+            tmp_file = tempfile.NamedTemporaryFile(suffix=".jpg", delete=False)
+            pil_image.save(tmp_file.name)
+            tmp_file.close()
+
+            result_text = run_full_ocr(tmp_file.name)
+
+            # Delete temp file manually
+            os.unlink(tmp_file.name)
+
+            if result_text.strip():
+                Note.objects.create(group=group, title="Scanned Note", text=result_text)
+                messages.success(request, "OCR note created successfully.")
+            else:
+                messages.error(request, "OCR returned no usable text.")
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            messages.error(request, f"OCR failed: {str(e)}")
+
+        return redirect("group_detail", group_id=group.id)
+
+    return redirect("group_detail", group_id=group.id)
+
+# ================== Favorites tab ==================
+@login_required
+def favorites(request):
+    notes = Note.objects.filter(group__user=request.user, is_favorite=True, is_archived=False)
+    return render(request, "main/favorites.html", {"notes": notes})
+
+# ================== Archived tab ==================
+@login_required
+def archived(request):
+    notes = Note.objects.filter(group__user=request.user, is_archived=True)
+    return render(request, "main/archived.html", {"notes": notes})
+
+# ================== Toggle favorite ==================
+@login_required
+def toggle_favorite(request, note_id):
+    note = get_object_or_404(Note, id=note_id, group__user=request.user)
+    note.is_favorite = not note.is_favorite
+    note.save()
+    return redirect("group_detail", group_id=note.group.id)
+
+# ================== Toggle archive ==================
+@login_required
+def toggle_archive(request, note_id):
+    note = get_object_or_404(Note, id=note_id, group__user=request.user)
+    note.is_archived = not note.is_archived
+    note.save()
+    return redirect("group_detail", group_id=note.group.id)
