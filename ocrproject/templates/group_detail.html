@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ group.name }} - Notes</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f5f5f7; margin: 0; padding: 30px; }
+        .header { display: flex; justify-content: space-between; align-items: center; }
+        .notes { margin-top: 30px; }
+        .note-card {
+            background: #fff;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        }
+        .note-card:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(0,0,0,0.12); }
+        a.back { color: #4CAF50; text-decoration: none; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>{{ group.name }}</h1>
+    <a href="{{ url_for('home') }}" class="back">← Back to Groups</a>
+</div>
+
+<h2>Upload Handwritten Note</h2>
+<form method="POST" action="{{ url_for('ocr', group_id=group.id) }}" enctype="multipart/form-data">
+  <input type="file" name="image" accept="image/*" required>
+  <button type="submit">Run OCR</button>
+</form>
+
+
+
+<div class="notes">
+    {% if notes %}
+    {% for note in notes %}
+    <div class="note-card">
+      <h3>{{ note.title }}</h3>
+            <p>{{ note.text }}</p>
+        </div>
+        {% endfor %}
+        {% else %}
+        <p>No notes yet in this group.</p>
+    {% endif %}
+</div>
+
+</body>
+</html>

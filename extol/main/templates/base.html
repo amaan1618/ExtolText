@@ -1,0 +1,48 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>{% block title %}Note Digitizer{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'styles.css' %}">
+  <style>
+    /* Paste your CSS from mhome.html here @Amaan*/
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="sidebar-top">
+        <button class="add-note-btn" id="addGroupBtn" title="Add New Group">+</button>
+      </div>
+
+      <div class="sidebar-menu">
+        <a href="{% url 'home' %}">All Notes</a>
+        <a href="{% url 'favorites' %}">Favorites</a>
+        <a href="{% url 'archived' %}">Archived</a>
+      </div>
+
+      <div class="sidebar-bottom">
+        {% if user.is_authenticated %}
+          <div>Hi {{ user.username }}!</div>
+          <form action="{% url 'logout' %}" method="post">
+            {% csrf_token %}
+            <button type="submit">Log Out</button>
+          </form>
+        {% else %}
+          <p>You are not logged in</p>
+          <a href="{% url 'login' %}">Log In</a>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+      {% block content %}{% endblock %}
+    </div>
+
+  </div>
+</body>
+</html>

@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="main-content">
+  <h1>Favorite Notes</h1>
+
+  {% for note in notes %}
+    <div class="group-card">
+      <h3>{{ note.title }}</h3>
+      <p>{{ note.text }}</p>
+      <p><small>Created on {{ note.created|date:"M d, Y" }}</small></p>
+    </div>
+  {% empty %}
+    <p>No favorite notes yet.</p>
+  {% endfor %}
+</div>
+{% endblock %}
