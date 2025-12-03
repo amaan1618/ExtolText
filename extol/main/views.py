@@ -13,12 +13,13 @@ from django.urls import reverse_lazy
 from django.http import HttpResponseForbidden
 from .models import Group, Note
 
-# Add ocrproject folder to Python path
-OCR_PATH = os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(__file__)), "..", "ocrproject"))
+# Add OCR project folder to Python path
+OCR_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "..", "ocrproject")
+OCR_PATH = os.path.abspath(OCR_PATH)
 if OCR_PATH not in sys.path:
     sys.path.insert(0, OCR_PATH)
 
-from ocr_utils import run_full_ocr
+from ocr_utils import run_full_ocr  # <- your OCR function
 
 # ================== Signup view ==================
 class SignUpView(CreateView):
@@ -65,45 +66,32 @@ def group_ocr(request, group_id):
 
     if request.method == "POST":
         image_file = request.FILES.get("image")
+        title = request.POST.get("title") or "Scanned Note"
+
         if not image_file:
-            messages.error(request, "Please upload a file.")
+            messages.error(request, "Please upload an image or PDF file.")
             return redirect("group_detail", group_id=group.id)
 
         try:
-            ext = image_file.name.lower().split('.')[-1]
-
-            # Handle PDF
+            ext = image_file.name.split(".")[-1].lower()
             if ext == "pdf":
                 from pdf2image import convert_from_bytes
                 images = convert_from_bytes(image_file.read())
-                if not images:
-                    raise ValueError("No pages found in PDF.")
-                pil_image = images[0]  # Only process first page for now
+                all_text = ""
+                for img in images:
+                    text = run_full_ocr(img)
+                    all_text += text + "\n"
             else:
-                pil_image = Image.open(image_file)
+                pil_img = Image.open(image_file)
+                all_text = run_full_ocr(pil_img)
 
-            pil_image = pil_image.convert("RGB")
-
-            # Save to temp file (delete=False to avoid Windows PermissionError)
-            import tempfile
-            tmp_file = tempfile.NamedTemporaryFile(suffix=".jpg", delete=False)
-            pil_image.save(tmp_file.name)
-            tmp_file.close()
-
-            result_text = run_full_ocr(tmp_file.name)
-
-            # Delete temp file manually
-            os.unlink(tmp_file.name)
-
-            if result_text.strip():
-                Note.objects.create(group=group, title="Scanned Note", text=result_text)
+            if all_text.strip():
+                Note.objects.create(group=group, title=title, text=all_text)
                 messages.success(request, "OCR note created successfully.")
             else:
                 messages.error(request, "OCR returned no usable text.")
 
         except Exception as e:
-            import traceback
-            traceback.print_exc()
             messages.error(request, f"OCR failed: {str(e)}")
 
         return redirect("group_detail", group_id=group.id)

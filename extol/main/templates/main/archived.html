@@ -1,16 +1,36 @@
 {% extends "base.html" %}
-{% block content %}
-<div class="main-content">
-  <h1>Archived Notes</h1>
+{% block title %}Archived Notes - Note Digitizer{% endblock %}
 
-  {% for note in notes %}
-    <div class="group-card">
-      <h3>{{ note.title }}</h3>
-      <p>{{ note.text }}</p>
-      <p><small>Created on {{ note.created|date:"M d, Y" }}</small></p>
+{% block content %}
+<h1>Archived Notes</h1>
+
+{% if notes %}
+    {% for note in notes %}
+    <div class="note-card">
+        <h3>{{ note.title }}</h3>
+        <p>{{ note.text }}</p>
+        <p><small>Created on {{ note.created|date:"M d, Y" }}</small></p>
+
+        <!-- Buttons -->
+        <form method="POST" action="{% url 'delete_note' note.id %}" style="display:inline;">
+            {% csrf_token %}
+            <button type="submit" class="delete-btn">Delete</button>
+        </form>
+
+        <a href="{% url 'toggle_favorite' note.id %}">
+            <button class="favorite-btn">
+                {% if note.is_favorite %}Unfavorite{% else %}Favorite{% endif %}
+            </button>
+        </a>
+
+        <a href="{% url 'toggle_archive' note.id %}">
+            <button class="archive-btn">
+                {% if note.is_archived %}Unarchive{% else %}Archive{% endif %}
+            </button>
+        </a>
     </div>
-  {% empty %}
+    {% endfor %}
+{% else %}
     <p>No archived notes yet.</p>
-  {% endfor %}
-</div>
+{% endif %}
 {% endblock %}
