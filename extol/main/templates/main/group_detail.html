@@ -1,78 +1,47 @@
-{% load static %}
-<!DOCTYPE html>
-<html lang="en">
+{% extends "base.html" %}
+{% block title %}{{ group.name }} - Notes{% endblock %}
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ group.name }} - Notes</title>
-    <style>
-        body {
-            font-family: 'Segoe UI', sans-serif;
-            background: #f5f5f7;
-            margin: 0;
-            padding: 30px;
-        }
+{% block content %}
+<div class="header">
+    <h1>{{ group.name }}</h1>
+</div>
 
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
+<h2>Upload Handwritten Note</h2>
+<form method="POST" action="{% url 'group_ocr' group.id %}" enctype="multipart/form-data" class="ocr-form">
+  {% csrf_token %}
+  <input type="text" name="title" placeholder="Enter Note Title" required>
+  <input type="file" name="image" accept="image/*,application/pdf" required>
+  <button type="submit" class="submit-btn">Run OCR</button>
+</form>
 
-        .notes {
-            margin-top: 30px;
-        }
-
-        .note-card {
-            background: #fff;
-            padding: 15px 20px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
-        }
-
-        .note-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.12);
-        }
-
-        a.back {
-            color: #4CAF50;
-            text-decoration: none;
-            font-weight: bold;
-        }
-    </style>
-</head>
-
-<body>
-
-    <div class="header">
-        <h1>{{ group.name }}</h1>
-        <a href="{% url 'home' %}" class="back">← Back to Groups</a>
-    </div>
-    <form action="{% url 'group_ocr' group.id %}" method="POST" enctype="multipart/form-data">
-        {% csrf_token %}
-        <input type="file" name="image" accept=".jpg,.jpeg,.png,.pdf" required>
-        <button type="submit">Scan Image</button>
-    </form>
-    <div class="notes">
+<h2>Notes</h2>
+<div class="notes">
+    {% if notes %}
         {% for note in notes %}
-        <form action="{% url 'delete_note' note.id %}" method="POST" style="margin-top:10px;">
-            {% csrf_token %}
-            <button type="submit" style="background:none;border:none;color:red;cursor:pointer;">
-                Delete
-            </button>
-        </form>
-        <div class="note-card">
+        <div class="note-card {% if note.is_favorite %}favorite{% endif %} {% if note.is_archived %}archived{% endif %}">
             <h3>{{ note.title }}</h3>
             <p>{{ note.text }}</p>
+            <div class="note-actions">
+                <!-- Delete -->
+                <form action="{% url 'delete_note' note.id %}" method="POST">
+                    {% csrf_token %}
+                    <button type="submit" class="delete-btn">Delete</button>
+                </form>
+                <!-- Toggle Favorite -->
+                <form action="{% url 'toggle_favorite' note.id %}" method="POST">
+                    {% csrf_token %}
+                    <button type="submit" class="favorite-btn">{% if note.is_favorite %}★{% else %}☆{% endif %}</button>
+                </form>
+                <!-- Toggle Archive -->
+                <form action="{% url 'toggle_archive' note.id %}" method="POST">
+                    {% csrf_token %}
+                    <button type="submit" class="archive-btn">{% if note.is_archived %}Unarchive{% else %}Archive{% endif %}</button>
+                </form>
+            </div>
         </div>
-        {% empty %}
-        <p>No notes yet in this group.</p>
         {% endfor %}
-    </div>
-
-</body>
-
-</html>
+    {% else %}
+        <p>No notes yet in this group.</p>
+    {% endif %}
+</div>
+{% endblock %}

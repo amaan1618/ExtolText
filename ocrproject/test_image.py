@@ -1,10 +1,10 @@
-from PIL import Image
+import cv2
+import pytesseract
 
-image_path = r"C:\Users\neett\Desktop\test.jpg"
+pytesseract.pytesseract.tesseract_cmd = r"D:\Users\amaan\AppData\Local\Programs\Tesseract-OCR\tesseract.exe"
 
-try:
-    img = Image.open(image_path)
-    img.show()
-    print("✅ Image opened successfully with PIL.")
-except Exception as e:
-    print("❌ PIL failed to open the image:", e)
+img = cv2.imread("hq720.jpg")
+
+text = pytesseract.image_to_string(img)
+
+print(text)

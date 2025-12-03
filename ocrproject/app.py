@@ -1,8 +1,6 @@
 from flask import Flask, request, jsonify
-from main import run_ocr
-from pdf2image import convert_from_path
+from ocr_utils import run_ocr, run_ocr_pdf
 from PIL import Image
-from io import BytesIO
 import os
 
 app = Flask(__name__)
@@ -12,35 +10,24 @@ app.config['UPLOAD_FOLDER'] = 'uploads'
 def ocr_endpoint():
     try:
         file = request.files['image']
-        print("Received file:", file.filename)
-
         filename = file.filename
         ext = filename.lower().split('.')[-1]
-        print("File extension:", ext)
 
         path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(path)
 
-        results = []
-
         if ext == 'pdf':
-            images = convert_from_path(path)
-            for img in images:
-                ocr_result = run_ocr(img)
-                print("OCR result for page:", ocr_result)
-                results.extend(ocr_result if isinstance(ocr_result, list) else [ocr_result])
+            with open(path, 'rb') as f:
+                pdf_bytes = f.read()
+            text = run_ocr_pdf(pdf_bytes)
         else:
-            # ✅ Always open image with PIL before passing to run_ocr
-            with Image.open(path) as img:
-                ocr_result = run_ocr(img)
-                print("OCR result:", ocr_result)
-                results.extend(ocr_result if isinstance(ocr_result, list) else [ocr_result])
+            img = Image.open(path)
+            text = run_ocr(img)
 
         os.remove(path)
-        return jsonify({'text': results})
+        return jsonify({'text': text})
 
     except Exception as e:
-        print("Error in OCR route:", str(e))
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
