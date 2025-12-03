@@ -10,6 +10,7 @@ from .views import (
     archived,
     toggle_favorite,
     toggle_archive,
+    delete_group,
 )
 
 urlpatterns = [
@@ -18,6 +19,7 @@ urlpatterns = [
     path("", home, name="home"),
     path("create-group/", create_group, name="create_group"),
     path("group/<int:group_id>/", group_detail, name="group_detail"),
+    path("group/<int:group_id>/delete/", delete_group, name="delete_group"),
     path("group/<int:group_id>/ocr/", group_ocr, name="group_ocr"),
     path("note/<int:note_id>/delete/", delete_note, name="delete_note"),
     path("favorites/", favorites, name="favorites"),

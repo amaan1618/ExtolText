@@ -134,10 +134,23 @@ h1 { margin-bottom: 20px; color: #1f1f2e; }
 
     {% for group in groups %}
     <a href="{% url 'group_detail' group.id %}" style="text-decoration: none; color: inherit;">
-        <div class="group-card">
+<div class="group-card">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div>
             <h3>{{ group.name }}</h3>
             <p>Created on {{ group.created|date:"M d, Y" }}</p>
         </div>
+
+        <!-- Delete button -->
+        <form action="{% url 'delete_group' group.id %}" method="post" onsubmit="return confirm('Delete this group and all notes?');">
+            {% csrf_token %}
+            <button style="background:#e84118; color:white; border:none; padding:8px 10px; border-radius:6px; cursor:pointer;">
+                Delete
+            </button>
+        </form>
+    </div>
+</div>
+
     </a>
     {% empty %}
     <p>No groups yet. Click the + button to create one!</p>

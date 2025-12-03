@@ -9,27 +9,30 @@ from django.contrib.auth.forms import UserCreationForm
 from django.urls import reverse_lazy
 from django.http import HttpResponseForbidden
 from .models import Group, Note
-import sys
-import os
 
-OCR_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "..", "ocrproject")
-OCR_PATH = os.path.abspath(OCR_PATH)
+# Path to external OCR project
+OCR_PATH = os.path.abspath(
+    os.path.join(os.path.dirname(os.path.dirname(__file__)), "..", "ocrproject")
+)
 
 if OCR_PATH not in sys.path:
     sys.path.insert(0, OCR_PATH)
-# Import OCR utils
-# Import OCR utils
+
+# import OCR utils
 from ocr_utils import run_ocr, run_ocr_pdf
+
 
 class SignUpView(CreateView):
     form_class = UserCreationForm
     success_url = reverse_lazy("login")
     template_name = "registration/signup.html"
 
+
 @login_required
 def home(request):
     groups = Group.objects.filter(user=request.user)
     return render(request, "main/mhome.html", {"groups": groups})
+
 
 @login_required
 def create_group(request):
@@ -37,7 +40,16 @@ def create_group(request):
         name = request.POST.get("name")
         if name:
             Group.objects.create(user=request.user, name=name)
-        return redirect("home")
+    return redirect("home")
+
+
+@login_required
+def delete_group(request, group_id):
+    group = get_object_or_404(Group, id=group_id, user=request.user)
+    group.delete()
+    messages.success(request, "Group deleted successfully.")
+    return redirect("home")
+
 
 @login_required
 def group_detail(request, group_id):
@@ -67,27 +79,22 @@ def group_ocr(request, group_id):
             return redirect("group_detail", group_id=group.id)
 
         try:
-            ext = file.name.split(".")[-1].lower()
+            ext = file.name.lower().split(".")[-1]
 
             if ext == "pdf":
-                pdf_bytes = file.read()
-                extracted_text = run_ocr_pdf(pdf_bytes)
+                extracted_text = run_ocr_pdf(file.read())
             else:
                 img = Image.open(file)
                 extracted_text = run_ocr(img)
 
             if extracted_text.strip():
-                Note.objects.create(
-                    group=group,
-                    title=title,
-                    text=extracted_text.strip()
-                )
+                Note.objects.create(group=group, title=title, text=extracted_text.strip())
                 messages.success(request, "OCR note created successfully.")
             else:
                 messages.error(request, "OCR returned no usable text.")
 
         except Exception as e:
-            messages.error(request, f"OCR failed: {str(e)}")
+            messages.error(request, f"OCR failed: {e}")
 
         return redirect("group_detail", group_id=group.id)
 
