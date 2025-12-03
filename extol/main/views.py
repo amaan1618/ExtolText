@@ -18,6 +18,7 @@ OCR_PATH = os.path.abspath(OCR_PATH)
 if OCR_PATH not in sys.path:
     sys.path.insert(0, OCR_PATH)
 # Import OCR utils
+# Import OCR utils
 from ocr_utils import run_ocr, run_ocr_pdf
 
 class SignUpView(CreateView):
